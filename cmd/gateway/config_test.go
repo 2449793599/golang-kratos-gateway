@@ -8,8 +8,10 @@ import (
 	corsv1 "github.com/go-kratos/gateway/api/gateway/middleware/cors/v1"
 	rewritev1 "github.com/go-kratos/gateway/api/gateway/middleware/rewrite/v1"
 	tracingv1 "github.com/go-kratos/gateway/api/gateway/middleware/tracing/v1"
+
 	"github.com/go-kratos/kratos/v2/config"
 	"github.com/go-kratos/kratos/v2/config/file"
+
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -17,6 +19,7 @@ import (
 )
 
 func equalTo() *configv1.Gateway {
+
 	return &configv1.Gateway{
 		Name:    "helloworld",
 		Version: "v1",
@@ -119,41 +122,56 @@ func equalTo() *configv1.Gateway {
 			},
 		},
 	}
+
 }
 
 func asAny(in proto.Message) *anypb.Any {
+
 	out, err := anypb.New(in)
+
 	if err != nil {
 		panic(err)
 	}
+
 	return out
+
 }
 
 func TestConfigUnmarshaler(t *testing.T) {
+
 	cfg := config.New(
 		config.WithSource(
 			file.NewSource("config.yaml"),
 		),
 	)
+
 	if err := cfg.Load(); err != nil {
 		t.Fatal(err)
 	}
+
+	// ****************************************************************
 	gateway := &configv1.Gateway{}
+
 	if err := cfg.Scan(gateway); err != nil {
 		t.Fatal(err)
 	}
 
-	left, err := protojson.Marshal(gateway)
+	left, err := protojson.Marshal(gateway) // PROTO转JSON
+
 	if err != nil {
 		t.Fatal(err)
 	}
-	right, err := protojson.Marshal(equalTo())
+
+	right, err := protojson.Marshal(equalTo()) // 等价构造
+
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Logf("gateway config:\nloaded: %s\nshould equal to: %s\n", left, right)
 
-	if !proto.Equal(gateway, equalTo()) {
+	if !proto.Equal(gateway, equalTo()) { // PROTO提供了EQUAL方法
 		t.Errorf("inconsistent gateway config")
 	}
+
 }

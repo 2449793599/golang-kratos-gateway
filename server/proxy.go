@@ -21,7 +21,9 @@ var (
 )
 
 func init() {
+
 	var err error
+
 	if v := os.Getenv("PROXY_READ_HEADER_TIMEOUT"); v != "" {
 		if readHeaderTimeout, err = time.ParseDuration(v); err != nil {
 			panic(err)
@@ -42,6 +44,7 @@ func init() {
 			panic(err)
 		}
 	}
+
 }
 
 // ProxyServer is a proxy server.
@@ -51,6 +54,7 @@ type ProxyServer struct {
 
 // NewProxy new a gateway server.
 func NewProxy(handler http.Handler, addr string) *ProxyServer {
+
 	return &ProxyServer{
 		Server: &http.Server{
 			Addr: addr,
@@ -64,20 +68,29 @@ func NewProxy(handler http.Handler, addr string) *ProxyServer {
 			IdleTimeout:       idleTimeout,
 		},
 	}
+
 }
 
 // Start the server.
 func (s *ProxyServer) Start(ctx context.Context) error {
+
 	log.Infof("proxy listening on %s", s.Addr)
+
 	err := s.ListenAndServe()
+
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
+
 	return err
+
 }
 
 // Stop the server.
 func (s *ProxyServer) Stop(ctx context.Context) error {
+
 	log.Info("proxy stopping")
+
 	return s.Shutdown(ctx)
+
 }
