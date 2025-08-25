@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type OnChange func() error
+type OnChange func() error // 回调接口
 
 type ConfigLoader interface {
 	Load(context.Context) (*configv1.Gateway, error)
@@ -28,10 +28,11 @@ type ConfigLoader interface {
 	Close()
 }
 
+// *******************************************************************************
 type FileLoader struct {
 	confPath           string
 	confSHA256         string
-	priorityDirectory  string
+	priorityDirectory  string // 配置优先级
 	priorityConfigHash map[string]string
 	watchCancel        context.CancelFunc
 	lock               sync.RWMutex
@@ -82,7 +83,7 @@ func (f *FileLoader) configSHA256() (string, map[string]string, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	hash := sha256sum(configData)
+	hash := sha256sum(configData) // 计算配置内容的SHA256SUM
 	phHash, err := f.priorityConfigSHA256()
 	if err != nil {
 		log.Warnf("failed to get priority config sha256: %+v", err)

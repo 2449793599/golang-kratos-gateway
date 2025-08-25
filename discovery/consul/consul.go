@@ -25,9 +25,9 @@ func New(dsn *url.URL) (registry.Discovery, error) {
 	if datacenter != "" {
 		c.Datacenter = datacenter
 	}
-	client, err := api.NewClient(c)
+	client, err := api.NewClient(c) // 客户端
 	if err != nil {
 		return nil, err
 	}
-	return consul.New(client), nil
+	return consul.New(client), nil // 客户端包装
 }

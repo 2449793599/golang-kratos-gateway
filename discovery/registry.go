@@ -42,12 +42,12 @@ func (d *discoveryRegistry) Create(discoveryDSN string) (registry.Discovery, err
 		return nil, fmt.Errorf("parse discoveryDSN error: %s", err)
 	}
 
-	factory, ok := d.discovery[dsn.Scheme]
+	factory, ok := d.discovery[dsn.Scheme] // 通过SCHEME确定服务注册中心
 	if !ok {
 		return nil, fmt.Errorf("discovery %s has not been registered", dsn.Scheme)
 	}
 
-	impl, err := factory(dsn)
+	impl, err := factory(dsn) // 执行构造（生成实例）
 	if err != nil {
 		return nil, fmt.Errorf("create discovery error: %s", err)
 	}
