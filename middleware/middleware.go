@@ -23,6 +23,8 @@ func (f RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 type FactoryV2 func(*configv1.Middleware) (MiddlewareV2, error)
+
+// *********************************************************************************************************************
 type MiddlewareV2 interface {
 	Process(http.RoundTripper) http.RoundTripper
 	io.Closer
@@ -41,6 +43,7 @@ func wrapFactory(in Factory) FactoryV2 {
 func (f Middleware) Process(in http.RoundTripper) http.RoundTripper { return f(in) }
 func (f Middleware) Close() error                                   { return nil }
 
+// *********************************************************************************************************************
 type withCloser struct {
 	process Middleware
 	closer  io.Closer
@@ -55,6 +58,7 @@ func NewWithCloser(process Middleware, closer io.Closer) MiddlewareV2 {
 	}
 }
 
+// *********************************************************************************************************************
 var EmptyMiddleware = emptyMiddleware{}
 
 type emptyMiddleware struct{}

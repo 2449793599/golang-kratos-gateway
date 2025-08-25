@@ -9,16 +9,20 @@ import (
 
 var globalRegistry = NewRegistry()
 
-type Factory func(dsn *url.URL) (registry.Discovery, error)
+// *********************************************************************************************************************
+type Factory func(dsn *url.URL) (registry.Discovery, error) // 服务发现工厂
 
+// *********************************************************************************************************************
 // Registry is the interface for callers to get registered middleware.
 type Registry interface {
 	Register(name string, factory Factory)
 	Create(discoveryDSN string) (registry.Discovery, error)
 }
 
+// ********************************************************
+// Registry Impl
 type discoveryRegistry struct {
-	discovery map[string]Factory
+	discovery map[string]Factory // 不同类型的服务注册发现中心 -- console、nacos、etcd...
 }
 
 // NewRegistry returns a new middleware registry.
@@ -33,27 +37,34 @@ func (d *discoveryRegistry) Register(name string, factory Factory) {
 }
 
 func (d *discoveryRegistry) Create(discoveryDSN string) (registry.Discovery, error) {
+
 	if discoveryDSN == "" {
 		return nil, fmt.Errorf("discoveryDSN is empty")
 	}
 
 	dsn, err := url.Parse(discoveryDSN)
+
 	if err != nil {
 		return nil, fmt.Errorf("parse discoveryDSN error: %s", err)
 	}
 
 	factory, ok := d.discovery[dsn.Scheme] // 通过SCHEME确定服务注册中心
+
 	if !ok {
 		return nil, fmt.Errorf("discovery %s has not been registered", dsn.Scheme)
 	}
 
 	impl, err := factory(dsn) // 执行构造（生成实例）
+
 	if err != nil {
 		return nil, fmt.Errorf("create discovery error: %s", err)
 	}
+
 	return impl, nil
+
 }
 
+// *********************************************************************************************************************
 // Register registers one discovery.
 func Register(name string, factory Factory) {
 	globalRegistry.Register(name, factory)
@@ -63,3 +74,5 @@ func Register(name string, factory Factory) {
 func Create(discoveryDSN string) (registry.Discovery, error) {
 	return globalRegistry.Create(discoveryDSN)
 }
+
+// *********************************************************************************************************************

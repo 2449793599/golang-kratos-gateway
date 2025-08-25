@@ -88,7 +88,9 @@ func setXFFHeader(req *http.Request) {
 }
 
 func writeError(w http.ResponseWriter, r *http.Request, err error, labels middleware.MetricsLabels) {
+
 	var statusCode int
+
 	switch {
 	case errors.Is(err, context.Canceled),
 		err.Error() == "client disconnected":
@@ -99,23 +101,36 @@ func writeError(w http.ResponseWriter, r *http.Request, err error, labels middle
 		log.Errorf("Failed to handle request: %s: %+v", r.URL.String(), err)
 		statusCode = 502
 	}
+
 	requestsTotalIncr(r, labels, statusCode)
+
 	if labels.Protocol() == config.Protocol_GRPC.String() {
+
 		// see https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto
+
 		code := strconv.Itoa(int(status.ToGRPCCode(statusCode)))
+
 		w.Header().Set("Content-Type", "application/grpc")
 		w.Header().Set("Grpc-Status", code)
 		w.Header().Set("Grpc-Message", err.Error())
+
 		statusCode = 200
+
 	}
+
 	w.WriteHeader(statusCode)
+
 }
 
 // notFoundHandler replies to the request with an HTTP 404 not found error.
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
+
 	code := http.StatusNotFound
+
 	message := "404 page not found"
+
 	http.Error(w, message, code)
+
 	log.Context(r.Context()).Errorw(
 		"source", "accesslog",
 		"host", r.Host,
@@ -126,7 +141,9 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 		"code", code,
 		"error", message,
 	)
+
 	_metricRequestsTotal.WithLabelValues("HTTP", r.Method, "/404", strconv.Itoa(code), "", "").Inc()
+
 }
 
 func methodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +173,7 @@ func (i *interceptors) SetPrepareAttemptTimeoutContext(f func(ctx context.Contex
 	}
 }
 
+// *********************************************************************************************************************
 // Proxy is a gateway proxy.
 type Proxy struct {
 	router            atomic.Value
@@ -166,6 +184,7 @@ type Proxy struct {
 
 // New is new a gateway proxy.
 func New(clientFactory client.Factory, middlewareFactory middleware.FactoryV2) (*Proxy, error) {
+
 	p := &Proxy{
 		clientFactory:     clientFactory,
 		middlewareFactory: middlewareFactory,
@@ -173,23 +192,39 @@ func New(clientFactory client.Factory, middlewareFactory middleware.FactoryV2) (
 			prepareAttemptTimeoutContext: defaultAttemptTimeoutContext,
 		},
 	}
+
 	p.router.Store(mux.NewRouter(http.HandlerFunc(notFoundHandler), http.HandlerFunc(methodNotAllowedHandler)))
+
 	return p, nil
+
 }
 
 func (p *Proxy) buildMiddleware(ms []*config.Middleware, next http.RoundTripper) (http.RoundTripper, error) {
+
 	for i := len(ms) - 1; i >= 0; i-- {
+
 		m, err := p.middlewareFactory(ms[i])
+
 		if err != nil {
+
 			if errors.Is(err, middleware.ErrNotFound) {
+
 				log.Errorf("Skip does not exist middleware: %s", ms[i].Name)
+
 				continue
+
 			}
+
 			return nil, err
+
 		}
+
 		next = m.Process(next)
+
 	}
+
 	return next, nil
+
 }
 
 func splitRetryMetricsHandler(e *config.Endpoint) (func(*http.Request, int), func(*http.Request, int, error)) {

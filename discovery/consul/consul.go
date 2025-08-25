@@ -14,20 +14,29 @@ func init() {
 }
 
 func New(dsn *url.URL) (registry.Discovery, error) {
+
 	c := api.DefaultConfig()
 
 	c.Address = dsn.Host
+
 	token := dsn.Query().Get("token")
+
 	if token != "" {
 		c.Token = token
 	}
+
 	datacenter := dsn.Query().Get("datacenter")
+
 	if datacenter != "" {
 		c.Datacenter = datacenter
 	}
+
 	client, err := api.NewClient(c) // 客户端
+
 	if err != nil {
 		return nil, err
 	}
+
 	return consul.New(client), nil // 客户端包装
+
 }
