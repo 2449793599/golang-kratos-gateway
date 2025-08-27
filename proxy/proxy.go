@@ -248,141 +248,233 @@ func splitRetryMetricsHandler(e *config.Endpoint) (func(*http.Request, int), fun
 }
 
 func (p *Proxy) buildEndpoint(buildCtx *client.BuildContext, e *config.Endpoint, ms []*config.Middleware) (_ http.Handler, _ io.Closer, retError error) {
+
 	client, err := p.clientFactory(buildCtx, e)
+
 	if err != nil {
 		return nil, nil, err
 	}
+
 	tripper := http.RoundTripper(client)
+
 	closer := io.Closer(client)
+
 	defer closeOnError(closer, &retError)
 
 	tripper, err = p.buildMiddleware(e.Middlewares, tripper)
+
 	if err != nil {
 		return nil, nil, err
 	}
+
 	tripper, err = p.buildMiddleware(ms, tripper)
+
 	if err != nil {
 		return nil, nil, err
 	}
+
 	retryStrategy, err := prepareRetryStrategy(e)
+
 	if err != nil {
 		return nil, nil, err
 	}
+
 	labels := middleware.NewMetricsLabels(e)
+
 	markSuccessStat, markFailedStat := splitRetryMetricsHandler(e)
+
 	retryBreaker := sre.NewBreaker(sre.WithSuccess(0.8))
+
 	markSuccess := func(req *http.Request, i int) {
+
 		markSuccessStat(req, i)
+
 		if i > 0 {
 			retryBreaker.MarkSuccess()
 		}
+
 	}
+
 	markFailed := func(req *http.Request, i int, err error) {
+
 		markFailedStat(req, i, err)
+
 		if i > 0 {
 			retryBreaker.MarkFailed()
 		}
+
 	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
 		startTime := time.Now()
+
 		setXFFHeader(req)
 
 		reqOpts := middleware.NewRequestOptions(e)
+
 		ctx := middleware.NewRequestContext(req.Context(), reqOpts)
+
 		ctx, cancel := context.WithTimeout(ctx, retryStrategy.timeout)
+
 		defer cancel()
+
 		defer func() {
 			requestsDurationObserve(req, labels, time.Since(startTime).Seconds())
 		}()
 
 		body, err := io.ReadAll(req.Body)
+
 		if err != nil {
+
 			writeError(w, req, err, labels)
+
 			return
+
 		}
+
 		receivedBytesAdd(req, labels, int64(len(body)))
+
 		req.GetBody = func() (io.ReadCloser, error) {
+
 			reader := bytes.NewReader(body)
+
 			return io.NopCloser(reader), nil
+
 		}
 
 		var resp *http.Response
+
 		for i := 0; i < retryStrategy.attempts; i++ {
+
 			if i > 0 {
+
 				if !retryFeature.Enabled() {
 					break
 				}
+
 				if err := retryBreaker.Allow(); err != nil {
+
 					markFailed(req, i, err)
+
 					break
+
 				}
+
 			}
 
 			if (i + 1) >= retryStrategy.attempts {
 				reqOpts.LastAttempt = true
 			}
+
 			// canceled or deadline exceeded
 			if err = ctx.Err(); err != nil {
+
 				markFailed(req, i, err)
+
 				break
+
 			}
+
 			tryCtx, cancel := p.Interceptors.prepareAttemptTimeoutContext(ctx, req, retryStrategy.perTryTimeout)
+
 			defer cancel()
+
 			reader := bytes.NewReader(body)
+
 			req.Body = io.NopCloser(reader)
+
 			resp, err = tripper.RoundTrip(req.Clone(tryCtx))
+
 			if err != nil {
+
 				markFailed(req, i, err)
+
 				log.Errorf("Attempt at [%d/%d], failed to handle request: %s: %+v", i+1, retryStrategy.attempts, req.URL.String(), err)
+
 				continue
+
 			}
+
 			if !judgeRetryRequired(retryStrategy.conditions, resp) {
+
 				reqOpts.LastAttempt = true
+
 				markSuccess(req, i)
+
 				break
+
 			}
+
 			markFailed(req, i, errors.New("assertion failed"))
+
 			// continue the retry loop
+
 		}
+
 		if err != nil {
+
 			writeError(w, req, err, labels)
+
 			return
+
 		}
 
 		headers := w.Header()
+
 		for k, v := range resp.Header {
 			headers[k] = v
 		}
+
 		w.WriteHeader(resp.StatusCode)
 
 		doCopyBody := func() bool {
+
 			if resp.Body == nil {
 				return true
 			}
+
 			defer resp.Body.Close()
 
 			copyFunc := io.Copy
+
 			if isNoBufferingResponse(resp) {
 				copyFunc = copyNoBuffering(w)
 			}
+
 			sent, err := copyFunc(w, resp.Body)
+
 			if err != nil {
+
 				reqOpts.DoneFunc(ctx, selector.DoneInfo{Err: err})
+
 				sentBytesAdd(req, labels, sent)
+
 				log.Errorf("Failed to copy backend response body to client: [%s] %s %s %d %+v\n", e.Protocol, e.Method, e.Path, sent, err)
+
 				return false
+
 			}
+
 			sentBytesAdd(req, labels, sent)
+
 			reqOpts.DoneFunc(ctx, selector.DoneInfo{ReplyMD: getReplyMD(e, resp)})
+
 			// see https://pkg.go.dev/net/http#example-ResponseWriter-Trailers
 			for k, v := range resp.Trailer {
 				headers[http.TrailerPrefix+k] = v
 			}
+
 			return true
+
 		}
+
 		doCopyBody()
+
 		requestsTotalIncr(req, labels, resp.StatusCode)
+
 	}), closer, nil
+
 }
 
 func getReplyMD(ep *config.Endpoint, resp *http.Response) selector.ReplyMD {
@@ -429,7 +521,7 @@ func closeOnError(closer io.Closer, err *error) {
 // Update updates service endpoint.
 func (p *Proxy) Update(buildContext *client.BuildContext, c *config.Gateway) (retError error) {
 
-	router := mux.NewRouter(http.HandlerFunc(notFoundHandler), http.HandlerFunc(methodNotAllowedHandler))
+	router := mux.NewRouter(http.HandlerFunc(notFoundHandler), http.HandlerFunc(methodNotAllowedHandler)) // 添加默认路由处理函数
 
 	for _, e := range c.Endpoints {
 

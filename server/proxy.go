@@ -48,7 +48,7 @@ func init() {
 }
 
 // ProxyServer is a proxy server.
-type ProxyServer struct {
+type ProxyServer struct { // 实现KRATOS中的`transport.Server`接口
 	*http.Server
 }
 
@@ -58,7 +58,7 @@ func NewProxy(handler http.Handler, addr string) *ProxyServer {
 	return &ProxyServer{
 		Server: &http.Server{
 			Addr: addr,
-			Handler: h2c.NewHandler(handler, &http2.Server{
+			Handler: h2c.NewHandler(handler, &http2.Server{ // TODO H2C
 				IdleTimeout:          idleTimeout,
 				MaxConcurrentStreams: math.MaxUint32,
 			}),

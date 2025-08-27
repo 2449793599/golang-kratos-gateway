@@ -9,7 +9,7 @@ import (
 	"github.com/go-kratos/kratos/v2/selector"
 )
 
-type client struct {
+type client struct { // 到后端服务端的客户端
 	applier  *nodeApplier
 	selector selector.Selector
 }

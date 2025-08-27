@@ -14,18 +14,25 @@ type Target struct {
 }
 
 func parseTarget(endpoint string) (*Target, error) {
+
 	if !strings.Contains(endpoint, "://") {
 		endpoint = "direct:///" + endpoint
 	}
+
 	u, err := url.Parse(endpoint)
+
 	if err != nil {
 		return nil, err
 	}
+
 	target := &Target{Scheme: u.Scheme, Authority: u.Host}
+
 	if len(u.Path) > 1 {
 		target.Endpoint = u.Path[1:]
 	}
+
 	return target, nil
+
 }
 
 // parseEndpoint parses an Endpoint URL.

@@ -28,16 +28,17 @@ var errNotModified = errors.New("config not modified")
 
 var priorityConfigFeature = feature.MustRegister("gw:PriorityConfig", false)
 
+// *********************************************************************************************************************
 type CtrlConfigLoader struct {
-	ctrlService          []string
+	ctrlService          []string // 多个控制器服务地址
 	ctrlServiceIdx       int
 	nextCtrlService      bool
-	dstPath              string
-	dstPriorityConfigDir string
+	dstPath              string // 配置文件地址
+	dstPriorityConfigDir string // 配置文件路径
 	cancel               context.CancelFunc
 
-	advertiseName string
-	advertiseAddr string
+	advertiseName string // 服务名称
+	advertiseAddr string // 网卡的IP地址
 
 	lastVersion         atomic.String
 	lastPriorityVersion atomic.Pointer[map[string]string]
@@ -101,8 +102,9 @@ func New(name, rawCtrlService, dstPath, dstPriorityConfigDir string) *CtrlConfig
 		dstPath:              dstPath,
 		dstPriorityConfigDir: dstPriorityConfigDir,
 	}
+
 	cl.advertiseName = name
-	cl.advertiseAddr = cl.getAdvertiseAddr()
+	cl.advertiseAddr = cl.getAdvertiseAddr() // 网卡的IP地址
 
 	return cl
 
@@ -381,7 +383,7 @@ func (c *CtrlConfigLoader) getAdvertiseAddr() string {
 		return advAddr
 	}
 
-	advDevice := os.Getenv("ADVERTISE_DEVICE")
+	advDevice := os.Getenv("ADVERTISE_DEVICE") // 网卡名称
 
 	if advDevice == "" {
 		advDevice = "eth0"

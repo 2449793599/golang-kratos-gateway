@@ -47,11 +47,14 @@ func init() {
 }
 
 func main() {
+
 	if len(os.Args) < 2 {
 		fmt.Println("client target is required")
 		return
 	}
+
 	target := os.Args[1]
+
 	flagSet.Parse(os.Args[2:])
 
 	fmt.Printf("Running %v test @ %s\n", duration, target)
@@ -60,31 +63,50 @@ func main() {
 	for i := 0; i < length; i++ {
 		name += "1"
 	}
+
 	var (
 		ctx, cancel = context.WithCancel(context.Background())
 		clients     []pb.GreeterClient
 	)
+
 	for i := 0; i < conns; i++ {
+
 		conn, err := grpc.Dial(target, grpc.WithInsecure())
+
 		if err != nil {
 			panic(err)
 		}
+
 		clients = append(clients, pb.NewGreeterClient(conn))
+
 	}
+
 	for i := 0; i < thread; i++ {
+
 		go worker(ctx, target, clients)
+
 		time.Sleep(duration / time.Duration(thread) / 2)
+
 	}
+
 	start := time.Now()
+
 	time.Sleep(duration)
+
 	cancel()
+
 	wg.Wait()
+
 	gap := time.Since(start)
+
 	suc := atomic.LoadInt64(&success)
 	fail := atomic.LoadInt64(&failure)
+
 	fmt.Printf("Requests/sec: %d\n", int64(float64(suc+fail)/gap.Seconds()))
 	fmt.Printf("Transfer/sec: %d\n", transfer)
+
 	printHist()
+
 	if len(errorCount) > 0 {
 		fmt.Printf("Failures: %d\n", fail)
 		for k, v := range errorCount {

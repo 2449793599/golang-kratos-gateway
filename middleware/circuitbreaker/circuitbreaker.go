@@ -25,18 +25,27 @@ import (
 var clientBuildContext atomic.Pointer[client.BuildContext]
 
 func init() {
-	clientBuildContext.Store(client.EmptyBuildContext())
-	prometheus.MustRegister(_metricDeniedTotal)
+
+	clientBuildContext.Store(client.EmptyBuildContext()) // 默认
+
+	prometheus.MustRegister(_metricDeniedTotal) // TODO
+
 }
 
 func Init(buildContext *client.BuildContext, clientFactory client.Factory) {
+
 	SetBuildContext(buildContext)
+
 	breakerFactory := New(clientFactory)
+
 	middleware.RegisterV2("circuitbreaker", breakerFactory)
+
 }
 
 func SetBuildContext(buildContext *client.BuildContext) {
+
 	clientBuildContext.Store(buildContext)
+
 }
 
 var (
@@ -79,9 +88,13 @@ func (nopTrigger) MarkSuccess() {}
 func (nopTrigger) MarkFailed()  {}
 
 func makeBreakerTrigger(in *v1.CircuitBreaker) circuitbreaker.CircuitBreaker {
+
 	switch trigger := in.Trigger.(type) {
+
 	case *v1.CircuitBreaker_SuccessRatio:
+
 		var opts []sre.Option
+
 		if trigger.SuccessRatio.Bucket != 0 {
 			opts = append(opts, sre.WithBucket(int(trigger.SuccessRatio.Bucket)))
 		}
@@ -94,39 +107,64 @@ func makeBreakerTrigger(in *v1.CircuitBreaker) circuitbreaker.CircuitBreaker {
 		if trigger.SuccessRatio.Window != nil {
 			opts = append(opts, sre.WithWindow(trigger.SuccessRatio.Window.AsDuration()))
 		}
+
 		return sre.NewBreaker(opts...)
+
 	case *v1.CircuitBreaker_Ratio:
+
 		return newRatioTrigger(trigger)
+
 	default:
+
 		log.Warnf("Unrecoginzed circuit breaker trigger: %+v", trigger)
+
 		return nopTrigger{}
+
 	}
+
 }
 
 func makeOnBreakHandler(buildContext *client.BuildContext, in *v1.CircuitBreaker, factory client.Factory) (http.RoundTripper, io.Closer, error) {
+
 	switch action := in.Action.(type) {
+
 	case *v1.CircuitBreaker_BackupService:
+
 		log.Infof("Making backup service as on break handler: %+v", action)
+
 		client, err := factory(buildContext, action.BackupService.Endpoint)
+
 		if err != nil {
 			return nil, nil, err
 		}
+
 		return client, client, nil
+
 	case *v1.CircuitBreaker_ResponseData:
+
 		log.Infof("Making static response data as on break handler: %+v", action)
+
 		return middleware.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+
 			resp := &http.Response{
 				StatusCode: int(action.ResponseData.StatusCode),
 				Header:     http.Header{},
 			}
+
 			for _, h := range action.ResponseData.Header {
 				resp.Header[h.Key] = h.Value
 			}
+
 			resp.Body = io.NopCloser(bytes.NewReader(action.ResponseData.Body))
+
 			return resp, nil
+
 		}), io.NopCloser(nil), nil
+
 	default:
+
 		log.Warnf("Unrecoginzed circuit breaker aciton: %+v", action)
+
 		return middleware.RoundTripperFunc(func(*http.Request) (*http.Response, error) {
 			// TBD: on break response
 			return &http.Response{
@@ -135,61 +173,100 @@ func makeOnBreakHandler(buildContext *client.BuildContext, in *v1.CircuitBreaker
 				Body:       io.NopCloser(&bytes.Buffer{}),
 			}, nil
 		}), io.NopCloser(nil), nil
+
 	}
+
 }
 
 func isSuccessResponse(conditions []condition.Condition, resp *http.Response) bool {
+
 	return condition.JudgeConditons(conditions, resp, true)
+
 }
 
 func deniedRequestIncr(req *http.Request) {
+
 	labels, ok := middleware.MetricsLabelsFromContext(req.Context())
+
 	if ok {
+
 		_metricDeniedTotal.WithLabelValues(labels.Protocol(), labels.Method(), labels.Path(), labels.Service(), labels.BasePath()).Inc()
+
 		return
+
 	}
+
 }
 
 func New(factory client.Factory) middleware.FactoryV2 {
+
 	return func(c *config.Middleware) (middleware.MiddlewareV2, error) {
+
 		options := &v1.CircuitBreaker{}
+
 		if c.Options != nil {
 			if err := anypb.UnmarshalTo(c.Options, options, proto.UnmarshalOptions{Merge: true}); err != nil {
 				return nil, err
 			}
 		}
+
 		breaker := makeBreakerTrigger(options)
+
 		onBreakHandler, closer, err := makeOnBreakHandler(clientBuildContext.Load(), options, factory)
+
 		if err != nil {
 			return nil, err
 		}
+
 		assertCondtions, err := condition.ParseConditon(options.AssertCondtions...)
+
 		if err != nil {
 			return nil, err
 		}
 
 		return middleware.NewWithCloser(func(next http.RoundTripper) http.RoundTripper {
+
 			return middleware.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+
 				if err := breaker.Allow(); err != nil {
 					// rejected
 					// NOTE: when client reject requests locally,
 					// continue add counter let the drop ratio higher.
+
 					breaker.MarkFailed()
+
 					deniedRequestIncr(req)
+
 					return onBreakHandler.RoundTrip(req)
+
 				}
+
 				resp, err := next.RoundTrip(req)
+
 				if err != nil {
+
 					breaker.MarkFailed()
+
 					return nil, err
+
 				}
+
 				if !isSuccessResponse(assertCondtions, resp) {
+
 					breaker.MarkFailed()
+
 					return resp, nil
+
 				}
+
 				breaker.MarkSuccess()
+
 				return resp, nil
+
 			})
+
 		}, closer), nil
+
 	}
+
 }

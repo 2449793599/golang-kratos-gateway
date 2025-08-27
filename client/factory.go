@@ -25,7 +25,9 @@ type BuildContext struct {
 // Factory is returns service client.
 type Factory func(*BuildContext, *config.Endpoint) (Client, error)
 
+// *********************************************************************************************************************
 type Option func(*options)
+
 type options struct {
 	pickerBuilder selector.Builder
 }
@@ -36,50 +38,78 @@ func WithPickerBuilder(in selector.Builder) Option {
 	}
 }
 
-func EmptyBuildContext() *BuildContext {
+// *********************************************************************************************************************
+func EmptyBuildContext() *BuildContext { // 默认
 	return &BuildContext{}
 }
 
-func NewBuildContext(cfg *config.Gateway) *BuildContext {
+func NewBuildContext(cfg *config.Gateway) *BuildContext { // 参数为配置对象
+
 	tlsConfigs := make(map[string]*tls.Config, len(cfg.TlsStore))
+
 	for k, v := range cfg.TlsStore {
+
 		cfg := &tls.Config{
 			InsecureSkipVerify: v.Insecure,
 			ServerName:         v.ServerName,
 		}
+
 		cert, err := tls.X509KeyPair([]byte(v.Cert), []byte(v.Key))
+
 		if err != nil {
+
 			LOG.Warnf("failed to load tls cert: %q: %v", k, err)
+
 			continue
+
 		}
+
 		cfg.Certificates = []tls.Certificate{cert}
+
 		if v.Cacert != "" {
+
 			roots := x509.NewCertPool()
+
 			if ok := roots.AppendCertsFromPEM([]byte(v.Cacert)); !ok {
+
 				LOG.Warnf("failed to load tls cacert: %q", k)
+
 				continue
+
 			}
+
 			cfg.RootCAs = roots
+
 		}
+
 		tlsConfigs[k] = cfg
+
 	}
+
 	return &BuildContext{
 		TLSConfigs:     tlsConfigs,
 		TLSClientStore: NewHTTPSClientStore(tlsConfigs),
 	}
+
 }
 
 // NewFactory new a client factory.
 func NewFactory(r registry.Discovery, opts ...Option) Factory {
+
 	o := &options{
-		pickerBuilder: p2c.NewBuilder(),
+		pickerBuilder: p2c.NewBuilder(), // 选择器
 	}
+
 	for _, opt := range opts {
 		opt(o)
 	}
-	return func(builderCtx *BuildContext, endpoint *config.Endpoint) (Client, error) {
+
+	return func(builderCtx *BuildContext, endpoint *config.Endpoint) (Client, error) { // 客户端工厂：用于实时获取一个客户端
+
 		picker := o.pickerBuilder.Build()
+
 		ctx, cancel := context.WithCancel(context.Background())
+
 		applier := &nodeApplier{
 			cancel:       cancel,
 			endpoint:     endpoint,
@@ -87,12 +117,17 @@ func NewFactory(r registry.Discovery, opts ...Option) Factory {
 			picker:       picker,
 			buildContext: builderCtx,
 		}
+
 		if err := applier.apply(ctx); err != nil {
 			return nil, err
 		}
+
 		client := newClient(applier, picker)
+
 		return client, nil
+
 	}
+
 }
 
 type nodeApplier struct {
@@ -105,28 +140,46 @@ type nodeApplier struct {
 }
 
 func (na *nodeApplier) apply(ctx context.Context) error {
+
 	var nodes []selector.Node
+
 	for _, backend := range na.endpoint.Backends {
+
 		target, err := parseTarget(backend.Target)
+
 		if err != nil {
 			return err
 		}
+
 		switch target.Scheme {
 		case "direct":
+
 			weighted := backend.Weight // weight is only valid for direct scheme
+
 			node := newNode(na.buildContext, backend.Target, na.endpoint.Protocol, weighted, backend.Metadata, "", "", WithTLS(backend.Tls), WithTLSConfigName(backend.TlsConfigName))
+
 			nodes = append(nodes, node)
+
 			na.picker.Apply(nodes)
+
 		case "discovery":
+
 			existed := AddWatch(ctx, na.registry, target.Endpoint, na)
+
 			if existed {
 				log.Infof("watch target %+v already existed", target)
 			}
+
 		default:
+
 			return fmt.Errorf("unknown scheme: %s", target.Scheme)
+
 		}
+
 	}
+
 	return nil
+
 }
 
 var _defaultWeight = int64(10)

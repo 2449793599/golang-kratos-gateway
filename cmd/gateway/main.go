@@ -37,8 +37,8 @@ import (
 )
 
 var (
-	ctrlName          string                 //
-	ctrlService       string                 //
+	ctrlName          string                 // 控制器名称
+	ctrlService       string                 // 控制器服务地址
 	discoveryDSN      string                 //
 	proxyAddrs        = newSliceVar(":8080") //
 	proxyConfig       string                 //
@@ -92,7 +92,7 @@ func makeDiscovery() registry.Discovery {
 		return nil
 	}
 
-	d, err := discovery.Create(discoveryDSN)
+	d, err := discovery.Create(discoveryDSN) // 通过服务发现DSN获取对应的服务发现对象：registry.Discovery
 
 	if err != nil {
 		log.Fatalf("failed to create discovery: %v", err)
@@ -114,11 +114,12 @@ func main() {
 		log.Fatalf("failed to new proxy: %v", err)
 	}
 
+	// *************************************************************************
 	ctx := context.Background()
 
 	var ctrlLoader *configLoader.CtrlConfigLoader
 
-	if ctrlService != "" {
+	if ctrlService != "" { // 控制服务
 
 		log.Infof("setup control service to: %q", ctrlService)
 
@@ -151,21 +152,25 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	// *************************************************************************
 	buildContext := client.NewBuildContext(bc)
 
-	circuitbreaker.Init(buildContext, clientFactory)
+	circuitbreaker.Init(buildContext, clientFactory) // 添加插件
 
-	if err := p.Update(buildContext, bc); err != nil {
+	if err := p.Update(buildContext, bc); err != nil { // 根据配置更新PROXY
 		log.Fatalf("failed to update service config: %v", err)
 	}
 
-	reloader := func() error {
+	reloader := func() error { // 一旦配置文件的SHA256发生变化时调用
 
 		bc, err := confLoader.Load(context.Background())
 
 		if err != nil {
+
 			log.Errorf("failed to load config: %v", err)
+
 			return err
+
 		}
 
 		buildContext := client.NewBuildContext(bc)
