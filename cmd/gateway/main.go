@@ -188,11 +188,12 @@ func main() {
 
 	confLoader.Watch(reloader)
 
-	var serverHandler http.Handler = p
+	// *************************************************************************
+	var serverHandler http.Handler = p // 处理器
 
 	if withDebug {
 
-		debug.Register("proxy", p)
+		debug.Register("proxy", p) // 添加更多的路由（调试相关）
 		debug.Register("config", confLoader)
 
 		if ctrlLoader != nil {
@@ -209,6 +210,7 @@ func main() {
 		servers = append(servers, server.NewProxy(serverHandler, addr))
 	}
 
+	// *************************************************************************
 	app := kratos.New(
 		kratos.Name(bc.Name),
 		kratos.Context(ctx),

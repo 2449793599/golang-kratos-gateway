@@ -38,13 +38,21 @@ func Register(name string, debuggable Debuggable) {
 }
 
 func MashupWithDebugHandler(origin http.Handler) http.Handler {
+
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
 		if strings.HasPrefix(req.URL.Path, _debugPrefix) {
+
 			rmux.ProtectedHandler(globalService).ServeHTTP(w, req)
+
 			return
+
 		}
+
 		origin.ServeHTTP(w, req)
+
 	})
+
 }
 
 type Debuggable interface {
@@ -57,17 +65,29 @@ type debugService struct {
 }
 
 func (d *debugService) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+
 	for path, handler := range d.handlers {
+
 		if path == req.URL.Path {
+
 			handler(w, req)
+
 			return
+
 		}
+
 	}
+
 	d.mux.ServeHTTP(w, req)
+
 }
 
 func (d *debugService) Register(name string, debuggable Debuggable) {
+
 	path := path.Join(_debugPrefix, name)
+
 	d.mux.PathPrefix(path).Handler(debuggable.DebugHandler())
+
 	log.Infof("register debug: %s", path)
+
 }

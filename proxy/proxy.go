@@ -417,70 +417,114 @@ func retryStateIncr(req *http.Request, labels middleware.MetricsLabels, success 
 }
 
 func closeOnError(closer io.Closer, err *error) {
+
 	if *err == nil {
 		return
 	}
+
 	closer.Close()
+
 }
 
 // Update updates service endpoint.
 func (p *Proxy) Update(buildContext *client.BuildContext, c *config.Gateway) (retError error) {
+
 	router := mux.NewRouter(http.HandlerFunc(notFoundHandler), http.HandlerFunc(methodNotAllowedHandler))
+
 	for _, e := range c.Endpoints {
+
 		handler, closer, err := p.buildEndpoint(buildContext, e, c.Middlewares)
+
 		if err != nil {
 			return err
 		}
+
 		defer closeOnError(closer, &retError)
+
 		if err = router.Handle(e.Path, e.Method, e.Host, handler, closer); err != nil {
 			return err
 		}
+
 		log.Infof("build endpoint: [%s] %s %s", e.Protocol, e.Method, e.Path)
+
 	}
+
 	old := p.router.Swap(router)
+
 	tryCloseRouter(old)
+
 	return nil
+
 }
 
 func tryCloseRouter(in interface{}) {
+
 	if in == nil {
 		return
 	}
+
 	r, ok := in.(router.Router)
+
 	if !ok {
 		return
 	}
+
 	go func() {
+
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
+
 		r.SyncClose(ctx)
+
 	}()
+
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+
 	defer func() {
+
 		if err := recover(); err != nil {
+
 			w.WriteHeader(http.StatusBadGateway)
+
 			buf := make([]byte, 64<<10) //nolint:gomnd
+
 			n := runtime.Stack(buf, false)
+
 			log.Errorf("panic recovered: %+v\n%s", err, buf[:n])
+
 			fmt.Fprintf(os.Stderr, "panic recovered: %+v\n%s\n", err, buf[:n])
+
 		}
+
 	}()
+
 	p.router.Load().(router.Router).ServeHTTP(w, req)
+
 }
 
 // DebugHandler implemented debug handler.
 func (p *Proxy) DebugHandler() http.Handler {
+
 	debugMux := http.NewServeMux()
+
 	debugMux.HandleFunc("/debug/proxy/router/inspect", func(rw http.ResponseWriter, r *http.Request) {
+
 		router, ok := p.router.Load().(router.Router)
+
 		if !ok {
 			return
 		}
+
 		inspect := mux.InspectMuxRouter(router)
+
 		rw.Header().Set("Content-Type", "application/json")
+
 		json.NewEncoder(rw).Encode(inspect)
+
 	})
+
 	return debugMux
+
 }
