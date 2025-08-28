@@ -7,10 +7,10 @@ import (
 )
 
 // Target is resolver target
-type Target struct {
-	Scheme    string
-	Authority string
-	Endpoint  string
+type Target struct { // endpoint：解析内容
+	Scheme    string // SCHEMA
+	Authority string // HOST
+	Endpoint  string // PATH
 }
 
 func parseTarget(endpoint string) (*Target, error) {
@@ -37,25 +37,36 @@ func parseTarget(endpoint string) (*Target, error) {
 
 // parseEndpoint parses an Endpoint URL.
 func parseEndpoint(endpoints []string, scheme string, isSecure bool) (string, error) {
+
 	for _, e := range endpoints {
+
 		u, err := url.Parse(e)
+
 		if err != nil {
 			return "", err
 		}
+
 		if u.Scheme == scheme {
 			if IsSecure(u) == isSecure {
 				return u.Host, nil
 			}
 		}
+
 	}
+
 	return "", nil
+
 }
 
 // IsSecure parses isSecure for Endpoint URL.
 func IsSecure(u *url.URL) bool {
+
 	ok, err := strconv.ParseBool(u.Query().Get("isSecure"))
+
 	if err != nil {
 		return false
 	}
+
 	return ok
+
 }

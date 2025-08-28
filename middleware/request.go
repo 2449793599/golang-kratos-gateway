@@ -12,13 +12,13 @@ type contextKey struct{}
 // RequestOptions is a request option.
 type RequestOptions struct {
 	Endpoint             *config.Endpoint
-	Filters              []selector.NodeFilter
-	Backends             []string
+	Filters              []selector.NodeFilter //
+	Backends             []string              // 表示当前选中的节点的地址
 	Metadata             map[string]string
-	UpstreamStatusCode   []int
-	UpstreamResponseTime []float64
-	CurrentNode          selector.Node
-	DoneFunc             selector.DoneFunc
+	UpstreamStatusCode   []int             // 真正请求的响应状态（发生错误时状态为0）
+	UpstreamResponseTime []float64         // 真正请求的耗时时间
+	CurrentNode          selector.Node     // 表示当前选中的节点
+	DoneFunc             selector.DoneFunc // 有状态码响应时会存储在这（请求后端错误时直接调用-不在这存储）
 	LastAttempt          bool
 	Values               RequestValues
 }
@@ -104,11 +104,15 @@ func NewRequestContext(ctx context.Context, o *RequestOptions) context.Context {
 
 // FromRequestContext returns request options from context.
 func FromRequestContext(ctx context.Context) (*RequestOptions, bool) {
+
 	o, ok := ctx.Value(contextKey{}).(*RequestOptions)
+
 	if ok {
 		return o, true
 	}
+
 	return nil, false
+
 }
 
 // EndpointFromContext returns endpoint config from context.
@@ -140,11 +144,15 @@ func WithRequestBackends(ctx context.Context, backend ...string) context.Context
 
 // SelectorFiltersFromContext returns selector filter from context.
 func SelectorFiltersFromContext(ctx context.Context) ([]selector.NodeFilter, bool) {
+
 	o, ok := ctx.Value(contextKey{}).(*RequestOptions)
+
 	if ok {
 		return o.Filters, true
 	}
+
 	return nil, false
+
 }
 
 // WithSelectorFitler with selector filter into context.

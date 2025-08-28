@@ -108,7 +108,7 @@ func main() {
 
 	clientFactory := client.NewFactory(makeDiscovery())
 
-	p, err := proxy.New(clientFactory, middleware.Create)
+	p, err := proxy.New(clientFactory, middleware.Create) // 可以理解为分发器
 
 	if err != nil {
 		log.Fatalf("failed to new proxy: %v", err)
@@ -157,7 +157,7 @@ func main() {
 
 	circuitbreaker.Init(buildContext, clientFactory) // 添加插件
 
-	if err := p.Update(buildContext, bc); err != nil { // 根据配置更新PROXY
+	if err := p.Update(buildContext, bc); err != nil { // 根据配置更新PROXY的ROUTER
 		log.Fatalf("failed to update service config: %v", err)
 	}
 

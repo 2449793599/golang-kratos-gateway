@@ -35,6 +35,7 @@ var (
 		Name:      "requests_code_total",
 		Help:      "The total number of processed requests",
 	}, []string{"protocol", "method", "path", "code", "service", "basePath"})
+
 	_metricRequestsDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "go",
 		Subsystem: "gateway",
@@ -42,18 +43,21 @@ var (
 		Help:      "Requests duration(sec).",
 		Buckets:   []float64{0.01, 0.1, 0.5, 1, 5},
 	}, []string{"protocol", "method", "path", "service", "basePath"})
+
 	_metricSentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "go",
 		Subsystem: "gateway",
 		Name:      "requests_tx_bytes",
 		Help:      "Total sent connection bytes",
 	}, []string{"protocol", "method", "path", "service", "basePath"})
+
 	_metricReceivedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "go",
 		Subsystem: "gateway",
 		Name:      "requests_rx_bytes",
 		Help:      "Total received connection bytes",
 	}, []string{"protocol", "method", "path", "service", "basePath"})
+
 	_metricRetryState = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "go",
 		Subsystem: "gateway",
@@ -71,20 +75,28 @@ func init() {
 }
 
 func setXFFHeader(req *http.Request) {
+
 	// see https://github.com/golang/go/blob/master/src/net/http/httputil/reverseproxy.go
 	if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
+
 		// If we aren't the first proxy retain prior
 		// X-Forwarded-For information as a comma+space
 		// separated list and fold multiple headers into one.
+
 		prior, ok := req.Header["X-Forwarded-For"]
+
 		omit := ok && prior == nil // Issue 38079: nil now means don't populate the header
+
 		if len(prior) > 0 {
 			clientIP = strings.Join(prior, ", ") + ", " + clientIP
 		}
+
 		if !omit {
 			req.Header.Set("X-Forwarded-For", clientIP)
 		}
+
 	}
+
 }
 
 func writeError(w http.ResponseWriter, r *http.Request, err error, labels middleware.MetricsLabels) {
@@ -147,9 +159,13 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func methodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
+
 	code := http.StatusMethodNotAllowed
+
 	message := http.StatusText(code)
+
 	http.Error(w, message, code)
+
 	log.Context(r.Context()).Errorw(
 		"source", "accesslog",
 		"host", r.Host,
@@ -160,7 +176,9 @@ func methodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
 		"code", code,
 		"error", message,
 	)
+
 	_metricRequestsTotal.WithLabelValues("HTTP", r.Method, "/405", strconv.Itoa(code), "", "").Inc()
+
 }
 
 type interceptors struct {
@@ -176,10 +194,10 @@ func (i *interceptors) SetPrepareAttemptTimeoutContext(f func(ctx context.Contex
 // *********************************************************************************************************************
 // Proxy is a gateway proxy.
 type Proxy struct {
-	router            atomic.Value
-	clientFactory     client.Factory
-	Interceptors      interceptors
-	middlewareFactory middleware.FactoryV2
+	router            atomic.Value         //
+	clientFactory     client.Factory       // 客户端工厂
+	Interceptors      interceptors         // 拦截器
+	middlewareFactory middleware.FactoryV2 // 中间件工厂
 }
 
 // New is new a gateway proxy.
@@ -228,23 +246,34 @@ func (p *Proxy) buildMiddleware(ms []*config.Middleware, next http.RoundTripper)
 }
 
 func splitRetryMetricsHandler(e *config.Endpoint) (func(*http.Request, int), func(*http.Request, int, error)) {
+
 	labels := middleware.NewMetricsLabels(e)
+
 	success := func(req *http.Request, i int) {
+
 		if i <= 0 {
 			return
 		}
+
 		retryStateIncr(req, labels, true)
+
 	}
 	failed := func(req *http.Request, i int, err error) {
+
 		if i <= 0 {
 			return
 		}
+
 		if errors.Is(err, context.Canceled) {
 			return
 		}
+
 		retryStateIncr(req, labels, false)
+
 	}
+
 	return success, failed
+
 }
 
 func (p *Proxy) buildEndpoint(buildCtx *client.BuildContext, e *config.Endpoint, ms []*config.Middleware) (_ http.Handler, _ io.Closer, retError error) {
@@ -478,34 +507,51 @@ func (p *Proxy) buildEndpoint(buildCtx *client.BuildContext, e *config.Endpoint,
 }
 
 func getReplyMD(ep *config.Endpoint, resp *http.Response) selector.ReplyMD {
+
 	if ep.Protocol == config.Protocol_GRPC {
 		return resp.Trailer
 	}
+
 	return resp.Header
+
 }
 
 func receivedBytesAdd(req *http.Request, labels middleware.MetricsLabels, received int64) {
+
 	_metricReceivedBytes.WithLabelValues(labels.Protocol(), req.Method, labels.Path(), labels.Service(), labels.BasePath()).Add(float64(received))
+
 }
 
 func sentBytesAdd(req *http.Request, labels middleware.MetricsLabels, sent int64) {
+
 	_metricSentBytes.WithLabelValues(labels.Protocol(), req.Method, labels.Path(), labels.Service(), labels.BasePath()).Add(float64(sent))
+
 }
 
 func requestsTotalIncr(req *http.Request, labels middleware.MetricsLabels, statusCode int) {
+
 	_metricRequestsTotal.WithLabelValues(labels.Protocol(), req.Method, labels.Path(), strconv.Itoa(statusCode), labels.Service(), labels.BasePath()).Inc()
+
 }
 
 func requestsDurationObserve(req *http.Request, labels middleware.MetricsLabels, seconds float64) {
+
 	_metricRequestsDuration.WithLabelValues(labels.Protocol(), req.Method, labels.Path(), labels.Service(), labels.BasePath()).Observe(seconds)
+
 }
 
 func retryStateIncr(req *http.Request, labels middleware.MetricsLabels, success bool) {
+
 	if success {
+
 		_metricRetryState.WithLabelValues(labels.Protocol(), req.Method, labels.Path(), labels.Service(), labels.BasePath(), "true").Inc()
+
 		return
+
 	}
+
 	_metricRetryState.WithLabelValues(labels.Protocol(), req.Method, labels.Path(), labels.Service(), labels.BasePath(), "false").Inc()
+
 }
 
 func closeOnError(closer io.Closer, err *error) {
@@ -541,7 +587,7 @@ func (p *Proxy) Update(buildContext *client.BuildContext, c *config.Gateway) (re
 
 	}
 
-	old := p.router.Swap(router)
+	old := p.router.Swap(router) // 替换成新的ROUTER
 
 	tryCloseRouter(old)
 
