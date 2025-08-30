@@ -27,6 +27,8 @@ type server struct {
 // SayHello implements helloworld.GreeterServer
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
 
+	fmt.Println("收到GRPC请求")
+
 	if in.Name == "error" {
 		return nil, context.DeadlineExceeded
 	}
@@ -49,17 +51,19 @@ func main() {
 	httpSrv := http.NewServer(
 		http.Address(httpAddr),
 		http.Middleware(
-			recovery.Recovery(),
+			recovery.Recovery(), // 恢复中间件：捕获PANIC避免服务崩溃
 		),
 	)
 	grpcSrv := grpc.NewServer(
 		grpc.Address(grpcAddr),
 		grpc.Middleware(
-			recovery.Recovery(),
+			recovery.Recovery(), // 恢复中间件：捕获PANIC避免服务崩溃
 		),
 	)
 
+	// curl http://127.0.0.1:8000/helloworld/header
 	httpSrv.HandleFunc("/helloworld/header", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("收到HTTP请求")
 		for k, v := range r.Header {
 			fmt.Fprintf(w, "%s: %s\n", k, v)
 		}

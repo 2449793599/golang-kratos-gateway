@@ -15,11 +15,14 @@ func init() {
 }
 
 // Middleware is a logging middleware.
-func Middleware(c *config.Middleware) (middleware.Middleware, error) {
+func Middleware(c *config.Middleware) (middleware.Middleware, error) { // 将配置转换成中间件对象
 
-	return func(next http.RoundTripper) http.RoundTripper {
+	return func(next http.RoundTripper) http.RoundTripper { // middleware.Middleware：func(http.RoundTripper) http.RoundTripper
 
-		return middleware.RoundTripperFunc(func(req *http.Request) (reply *http.Response, err error) {
+		// RoundTripperFunc：func(*http.Request) (*http.Response, error)
+		// RoundTripperFunc：具有RoundTrip方法
+		// http.RoundTripper：RoundTrip(*Request) (*Response, error)
+		return middleware.RoundTripperFunc(func(req *http.Request) (reply *http.Response, err error) { // 当前函数被转换为RoundTripperFunc，并具有RoundTrip方法
 
 			startTime := time.Now()
 
@@ -27,7 +30,7 @@ func Middleware(c *config.Middleware) (middleware.Middleware, error) {
 
 			level := log.LevelInfo
 
-			code := http.StatusBadGateway
+			code := http.StatusBadGateway // 默认状态码（BadGateway）
 
 			errMsg := ""
 

@@ -15,6 +15,9 @@ import (
 
 var reqURL = "http://127.0.0.1:8080/helloworld.Greeter/SayHello"
 
+// 注意：
+// 1. 请求URL要与GATEWAY中的保持一致（上面缺少版本号）
+// 2. 响应数据打印
 func main() {
 
 	hc := &http.Client{

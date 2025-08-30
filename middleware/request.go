@@ -10,7 +10,7 @@ import (
 type contextKey struct{}
 
 // RequestOptions is a request option.
-type RequestOptions struct {
+type RequestOptions struct { // 网关记日志时会用到
 	Endpoint             *config.Endpoint
 	Filters              []selector.NodeFilter //
 	Backends             []string              // 表示当前选中的节点的地址

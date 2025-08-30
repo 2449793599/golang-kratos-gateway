@@ -112,6 +112,7 @@ func Middleware(c *config.Middleware) (middleware.Middleware, error) {
 	normalHeaders := generateNormalHeaders(options)
 
 	return func(next http.RoundTripper) http.RoundTripper {
+
 		return middleware.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 
 			origin := req.Header.Get(corsOriginHeader)

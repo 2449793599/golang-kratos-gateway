@@ -48,7 +48,7 @@ if err := cfg.Load(); err != nil {
     t.Fatal(err)
 }
 ```
-
+配置详情参考：config.demo.yaml
 
 工作流程：
 1. 服务初始流程

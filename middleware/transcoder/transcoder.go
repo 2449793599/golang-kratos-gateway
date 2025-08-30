@@ -55,7 +55,7 @@ func Middleware(c *config.Middleware) (middleware.Middleware, error) {
 
 			endpoint, _ := middleware.EndpointFromContext(ctx)
 
-			if endpoint.Protocol != config.Protocol_GRPC || strings.HasPrefix(contentType, "application/grpc") {
+			if endpoint.Protocol != config.Protocol_GRPC || strings.HasPrefix(contentType, "application/grpc") { // 表示是GRPC协议却没有指定CONTENT-TYPE
 				return next.RoundTrip(req)
 			}
 
@@ -76,7 +76,9 @@ func Middleware(c *config.Middleware) (middleware.Middleware, error) {
 			// - application/grpc+proto
 			req.Header.Set("Content-Type", "application/grpc+"+strings.TrimPrefix(contentType, "application/"))
 			req.Header.Del("Content-Length")
+
 			req.ContentLength = int64(len(bb))
+
 			req.Body = io.NopCloser(bytes.NewReader(bb))
 
 			resp, err := next.RoundTrip(req)
@@ -93,7 +95,7 @@ func Middleware(c *config.Middleware) (middleware.Middleware, error) {
 			// Convert HTTP/2 response to HTTP/1.1
 			// Trailers are sent in a data frame, so don't announce trailers as otherwise downstream proxies might get confused.
 
-			for trailerName, values := range resp.Trailer {
+			for trailerName, values := range resp.Trailer { // Trailer->Header
 				resp.Header[trailerName] = values
 			}
 
