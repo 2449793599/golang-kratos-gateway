@@ -42,26 +42,42 @@ func init() {
 
 // Middleware is a opentelemetry middleware.
 func Middleware(c *config.Middleware) (middleware.Middleware, error) {
+
 	options := &v1.Tracing{}
+
 	if c.Options != nil {
 		if err := anypb.UnmarshalTo(c.Options, options, proto.UnmarshalOptions{Merge: true}); err != nil {
 			return nil, err
 		}
 	}
+
 	if globaltp.provider == nil {
+
 		globaltp.initOnce.Do(func() {
+
 			globaltp.provider = newTracerProvider(context.Background(), options)
+
 			propagator := propagation.NewCompositeTextMapPropagator(propagation.Baggage{}, propagation.TraceContext{})
+
 			otel.SetTracerProvider(globaltp.provider)
 			otel.SetTextMapPropagator(propagator)
+
 		})
+
 	}
+
 	tracer := otel.Tracer(defaultTracerName)
+
 	return func(next http.RoundTripper) http.RoundTripper {
+
 		return middleware.RoundTripperFunc(func(req *http.Request) (reply *http.Response, err error) {
+
 			ctx, span := tracer.Start(
+
 				req.Context(),
+
 				fmt.Sprintf("%s %s", req.Method, req.URL.Path),
+
 				trace.WithSpanKind(trace.SpanKindClient),
 			)
 
@@ -73,26 +89,38 @@ func Middleware(c *config.Middleware) (middleware.Middleware, error) {
 			)
 
 			car := propagation.HeaderCarrier(req.Header)
+
 			otel.GetTextMapPropagator().Inject(ctx, car)
 
 			defer func() {
+
 				if err != nil {
+
 					span.RecordError(err)
 					span.SetStatus(codes.Error, err.Error())
+
 				} else {
 					span.SetStatus(codes.Ok, "OK")
 				}
+
 				if reply != nil {
 					span.SetAttributes(semconv.HTTPStatusCodeKey.Int(reply.StatusCode))
 				}
+
 				span.End()
+
 			}()
+
 			return next.RoundTrip(req.WithContext(ctx))
+
 		})
+
 	}, nil
+
 }
 
 func newTracerProvider(ctx context.Context, options *v1.Tracing) trace.TracerProvider {
+
 	var (
 		timeout     = defaultTimeout
 		serviceName = defaultServiceName
@@ -107,6 +135,7 @@ func newTracerProvider(ctx context.Context, options *v1.Tracing) trace.TracerPro
 	}
 
 	var sampler sdktrace.Sampler
+
 	if options.SampleRatio == nil {
 		sampler = sdktrace.AlwaysSample()
 	} else {
@@ -117,6 +146,7 @@ func newTracerProvider(ctx context.Context, options *v1.Tracing) trace.TracerPro
 		otlptracehttp.WithEndpoint(options.HttpEndpoint),
 		otlptracehttp.WithTimeout(timeout),
 	}
+
 	if options.Insecure != nil && *options.Insecure {
 		otlpoptions = append(otlpoptions, otlptracehttp.WithInsecure())
 	}
@@ -126,6 +156,7 @@ func newTracerProvider(ctx context.Context, options *v1.Tracing) trace.TracerPro
 	)
 
 	exporter, err := otlptrace.New(ctx, client)
+
 	if err != nil {
 		log.Fatalf("creating OTLP trace exporter: %v", err)
 	}
@@ -141,4 +172,5 @@ func newTracerProvider(ctx context.Context, options *v1.Tracing) trace.TracerPro
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(resources),
 	)
+
 }

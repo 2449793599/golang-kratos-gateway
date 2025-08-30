@@ -64,19 +64,25 @@ type ratioTrigger struct {
 }
 
 func newRatioTrigger(in *v1.CircuitBreaker_Ratio) *ratioTrigger {
+
 	return &ratioTrigger{
 		CircuitBreaker_Ratio: in,
 		rand:                 rand.New(rand.NewSource(uint64(time.Now().UnixNano()))),
 	}
+
 }
 
 func (r *ratioTrigger) Allow() error {
+
 	r.lock.Lock()
 	defer r.lock.Unlock()
+
 	if r.rand.Int63n(10000) < r.Ratio {
 		return nil
 	}
+
 	return circuitbreaker.ErrNotAllowed
+
 }
 func (*ratioTrigger) MarkSuccess() {}
 func (*ratioTrigger) MarkFailed()  {}

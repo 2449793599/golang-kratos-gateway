@@ -8,6 +8,7 @@ import (
 )
 
 func TestRetryByStatusCode(t *testing.T) {
+
 	testCases := []struct {
 		cond   *byStatusCode
 		resp   *http.Response
@@ -43,17 +44,23 @@ func TestRetryByStatusCode(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
+
 		if err := testCase.cond.Prepare(); err != nil {
 			t.Errorf("prepare error: %v", err)
 		}
+
 		result := testCase.cond.Judge(testCase.resp)
+
 		if result != testCase.result {
 			t.Errorf("%v, %d: expected %v, got %v", testCase.cond.ByStatusCode, testCase.resp.StatusCode, testCase.result, result)
 		}
+
 	}
+
 }
 
 func TestRetryByHeader(t *testing.T) {
+
 	testCases := []struct {
 		cond   *byHeader
 		resp   *http.Response
@@ -154,13 +161,19 @@ func TestRetryByHeader(t *testing.T) {
 			result: false,
 		},
 	}
+
 	for _, testCase := range testCases {
+
 		if err := testCase.cond.Prepare(); err != nil {
 			t.Errorf("prepare error: %v", err)
 		}
+
 		result := testCase.cond.Judge(testCase.resp)
+
 		if result != testCase.result {
 			t.Errorf("%v, %v: expected %v, got %v", testCase.cond.ByHeader, testCase.resp.Header, testCase.result, result)
 		}
+
 	}
+
 }

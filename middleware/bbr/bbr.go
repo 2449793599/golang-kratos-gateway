@@ -18,20 +18,32 @@ func init() {
 }
 
 func Middleware(c *config.Middleware) (middleware.Middleware, error) {
+
 	limiter := bbr.NewLimiter() //use default settings
+
 	return func(next http.RoundTripper) http.RoundTripper {
+
 		return middleware.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+
 			done, err := limiter.Allow()
+
 			if err != nil {
+
 				return &http.Response{
 					Status:     http.StatusText(http.StatusTooManyRequests),
 					StatusCode: http.StatusTooManyRequests,
 					Body:       _nopBody,
 				}, nil
 			}
+
 			resp, err := next.RoundTrip(req)
+
 			done(ratelimit.DoneInfo{Err: err})
+
 			return resp, err
+
 		})
+
 	}, nil
+
 }

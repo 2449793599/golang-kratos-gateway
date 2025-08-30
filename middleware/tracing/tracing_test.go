@@ -14,9 +14,11 @@ import (
 )
 
 func TestTracer(t *testing.T) {
+
 	cfg, err := anypb.New(&v1.Tracing{
 		HttpEndpoint: "127.0.0.1:4318",
 	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,13 +32,17 @@ func TestTracer(t *testing.T) {
 	m, err := Middleware(&config.Middleware{
 		Options: cfg,
 	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	req := httptest.NewRequest("GET", "/api/v1/hello", bytes.NewBufferString("test"))
+
 	_, err = m(next).RoundTrip(req)
+
 	if err != nil {
 		t.Fatal(err)
 	}
+
 }

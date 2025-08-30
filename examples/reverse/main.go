@@ -21,14 +21,19 @@ func init() {
 }
 
 func newProxy(targetHost string) (*httputil.ReverseProxy, error) {
+
 	url, err := url.Parse(targetHost)
+
 	if err != nil {
 		return nil, err
 	}
+
 	rp, err := httputil.NewSingleHostReverseProxy(url), nil
+
 	if err != nil {
 		return nil, err
 	}
+
 	rp.Transport = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -43,22 +48,33 @@ func newProxy(targetHost string) (*httputil.ReverseProxy, error) {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
+
 	return rp, nil
+
 }
 
 func proxyRequestHandler(proxy *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		proxy.ServeHTTP(w, r)
 	}
+
 }
 
 func main() {
+
 	flag.Parse()
+
 	proxy, err := newProxy(target)
+
 	if err != nil {
 		panic(err)
 	}
+
 	http.HandleFunc("/", proxyRequestHandler(proxy))
+
 	log.Println("server listening on:", addr)
+
 	log.Fatal(http.ListenAndServe(addr, nil))
+
 }

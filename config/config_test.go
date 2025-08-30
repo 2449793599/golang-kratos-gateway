@@ -14,6 +14,7 @@ import (
 )
 
 func equalTo() *configv1.Gateway {
+
 	return &configv1.Gateway{
 		Name: "helloworld",
 		Hosts: []string{
@@ -71,36 +72,49 @@ func equalTo() *configv1.Gateway {
 			},
 		},
 	}
+
 }
 
 func asAny(in proto.Message) *anypb.Any {
+
 	out, err := anypb.New(in)
+
 	if err != nil {
 		panic(err)
 	}
+
 	return out
+
 }
 
 func TestFileLoader(t *testing.T) {
+
 	fl := &FileLoader{
 		confPath: "./fixtures/config.yaml",
 	}
+
 	cfg, err := fl.Load(context.TODO())
+
 	if err != nil {
 		t.Error(err)
 	}
 
 	left, err := protojson.Marshal(cfg)
+
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	right, err := protojson.Marshal(equalTo())
+
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Logf("gateway config:\nloaded: %s\nshould equal to: %s\n", left, right)
 
 	if !proto.Equal(cfg, equalTo()) {
 		t.Errorf("inconsistent gateway config")
 	}
+
 }

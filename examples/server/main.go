@@ -26,10 +26,13 @@ type server struct {
 
 // SayHello implements helloworld.GreeterServer
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
+
 	if in.Name == "error" {
 		return nil, context.DeadlineExceeded
 	}
+
 	return &pb.HelloReply{Message: in.GetName()}, nil
+
 }
 
 func init() {

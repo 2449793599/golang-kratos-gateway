@@ -9,6 +9,7 @@ import (
 )
 
 func TestCalcAttempts(t *testing.T) {
+
 	testCases := []struct {
 		endpoint *config.Endpoint
 		attempts int
@@ -38,14 +39,19 @@ func TestCalcAttempts(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
+
 		attempts := calcAttempts(testCase.endpoint)
+
 		if attempts != testCase.attempts {
 			t.Errorf("calcAttempts(%v) = %v, want %v", testCase.endpoint, attempts, testCase.attempts)
 		}
+
 	}
+
 }
 
 func TestCalcTimeout(t *testing.T) {
+
 	testCase := []struct {
 		endpoint *config.Endpoint
 		timeout  time.Duration
@@ -65,9 +71,13 @@ func TestCalcTimeout(t *testing.T) {
 	}
 
 	for _, testCase := range testCase {
+
 		timeout := calcTimeout(testCase.endpoint)
+
 		if timeout != testCase.timeout {
 			t.Errorf("calcTimeout(%v) = %v, want %v", testCase.endpoint, timeout, testCase.timeout)
 		}
+
 	}
+
 }
