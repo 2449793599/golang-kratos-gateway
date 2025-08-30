@@ -119,7 +119,7 @@ func main() {
 
 	var ctrlLoader *configLoader.CtrlConfigLoader
 
-	if ctrlService != "" { // 控制服务
+	if ctrlService != "" { // 是GATEWAY的控制平面服务（是一个内置于网关进程中的HTTP服务，专门用于接收来自外部的管理指令和配置更新，并对外提供运行状态查询接口）
 
 		log.Infof("setup control service to: %q", ctrlService)
 

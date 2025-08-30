@@ -26,19 +26,19 @@ import (
 
 var errNotModified = errors.New("config not modified")
 
-var priorityConfigFeature = feature.MustRegister("gw:PriorityConfig", false)
+var priorityConfigFeature = feature.MustRegister("gw:PriorityConfig", false) // TODO？？？
 
 // *********************************************************************************************************************
 type CtrlConfigLoader struct {
 	ctrlService          []string // 多个控制器服务地址
-	ctrlServiceIdx       int
-	nextCtrlService      bool
-	dstPath              string // 配置文件地址
-	dstPriorityConfigDir string // 配置文件路径
+	ctrlServiceIdx       int      //
+	nextCtrlService      bool     //
+	dstPath              string   // 配置文件地址
+	dstPriorityConfigDir string   // 配置文件路径
 	cancel               context.CancelFunc
 
 	advertiseName string // 服务名称
-	advertiseAddr string // 网卡的IP地址
+	advertiseAddr string // 服务IP地址
 
 	lastVersion         atomic.String
 	lastPriorityVersion atomic.Pointer[map[string]string]
@@ -143,7 +143,7 @@ func (c *CtrlConfigLoader) urlfor(upath string, params url.Values) (string, erro
 func (c *CtrlConfigLoader) Load(ctx context.Context) (err error) {
 
 	defer func() {
-		if err != nil {
+		if err != nil { // 有错误则切换下一个控制器服务
 			c.nextCtrlService = true
 		}
 	}()
@@ -405,7 +405,7 @@ func (c *CtrlConfigLoader) getAdvertiseAddr() string {
 
 }
 
-func (c *CtrlConfigLoader) load(ctx context.Context) ([]byte, error) {
+func (c *CtrlConfigLoader) load(ctx context.Context) ([]byte, error) { // 从控制器服务加载配置
 
 	params := url.Values{}
 
